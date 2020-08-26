@@ -5,15 +5,14 @@ connect to new hosts.
 
 It does this by injecting a customizable bashrc during your ssh session setup.
 """
-
 import argparse
 import base64
+import glob
 import os
 import random
 import sys
 
-SSHUTTLE_EOL = "_EOL"
-SSHUTTLEID = random.randint(10000, 99999)
+SSHHOME = f"/tmp/sshuttle.{random.randint(10000, 99999)}"
 
 
 def cook_rcfile(data):
@@ -26,8 +25,9 @@ def cook_rcfile(data):
     Returns:
       data (str): URI encoded string
     """
-    data = SSHUTTLE_EOL.join(data)
-    return base64.b64encode(data)
+    data = "\n".join(data)
+    data_bytes = bytes(data, encoding="utf")
+    return base64.b64encode(data_bytes).decode()
 
 
 def get_parser():
@@ -42,8 +42,8 @@ def get_parser():
     """
     parser = argparse.ArgumentParser(
         usage="%(prog)s [ssh-opts] <host>",
-        description="%(prog)s takes advantage of bash to give you a "
-        "familiar home on remote systems")
+        description="%(prog)s takes advantage of bash to give you a " "familiar home on remote systems",
+    )
     return parser
 
 
@@ -60,13 +60,12 @@ def default_rcfile():
 
     default = r"""
 PS1="\[\e[00;31m\]\u\[\e[0m\]\[\e[00;37m\]@\[\e[0m\]\[\e[00;36m\]\h\[\e[0m\]\[\e[00;37m\]:\w \[\e[0m\]"
-cleaner() { echo "cleaning up sshuttle remnants!"; rm -rf "${TMPDIR}"; }
+cleaner() { echo "cleaning up sshuttle remnants!"; rm -rf "${SSHHOME}"; }
 trap cleaner SIGINT SIGTERM EXIT
 """
 
-    lines = [line.rstrip() for line in default.split('\n')]
-    lines.insert(0, f"TMPDIR=/tmp/sshuttle.{SSHUTTLEID}")
-    return lines
+    lines = [line.rstrip() for line in default.split(sep="\n")]
+    return [f"SSHHOME={SSHHOME}", *lines]
 
 
 def read_rcfile(rcfile):
@@ -98,17 +97,19 @@ def get_user_rcfiles():
     Returns:
         script (list): aggregated list of lines from all scripts
     """
-    search_files = []
-    search_files.append(os.path.join(os.environ['HOME'], '.sshuttlerc.d'))
-    search_files.append(os.path.join(os.environ['HOME'], '.sshuttlerc'))
+    search_files = [
+        os.path.join(os.environ["HOME"], ".sshuttlerc.d"),
+        os.path.join(os.environ["HOME"], ".sshuttlerc"),
+    ]
 
     script = []
     for rcfile in search_files:
         if os.path.isfile(rcfile):
             script += read_rcfile(rcfile)
         if os.path.isdir(rcfile):
-            for rcdfile in os.listdir(rcfile):
-                script += read_rcfile(os.path.join(rcfile, rcdfile))
+            rcd_files = glob.glob(f"{rcfile}/**/*", recursive=True)
+            for rcd_file in rcd_files:
+                script += read_rcfile(rcd_file)
     return script
 
 
@@ -121,13 +122,7 @@ def get_inject_string_base64(command_script):
     Returns:
         script (string)
     """
-    return """INJECT=\"mkdir {tmpdir};
-              echo \\$(echo '{cmd}' |
-              base64 -di -) |
-              sed 's/{eol}/\\n/g' >{tmpdir}/rc\"""".format(
-        tmpdir="/tmp/sshuttle.{}".format(SSHUTTLEID),
-        cmd=command_script,
-        eol=SSHUTTLE_EOL)
+    return f'INJECT="mkdir {SSHHOME}; base64 --decode <<< {command_script} > {SSHHOME}/rc"'
 
 
 def connect(target_host, ssh_options, command_script):
@@ -139,17 +134,15 @@ def connect(target_host, ssh_options, command_script):
     Returns:
         None
     """
-    cmd_line = ''
+    cmd_line = ""
     cmd_line += get_inject_string_base64(command_script)
     cmd_line += "; /usr/bin/ssh -t"
 
     for option in ssh_options:
-        cmd_line += " {}".format(option)
+        cmd_line += f" {option}"
 
-    cmd_line += """ {target_host} \"$INJECT;
-        exec /bin/bash --rcfile {tmpdir}/rc\"""".format(
-        target_host=target_host,
-        tmpdir="/tmp/sshuttle.{}".format(SSHUTTLEID))
+    cmd_line += f' {target_host} "$INJECT; exec /bin/bash --rcfile {SSHHOME}/rc"'
+
     os.system(cmd_line)
 
 
