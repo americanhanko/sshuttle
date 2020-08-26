@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sshuttle"
-version = "0.2.0"
+version = "0.2.1"
 description = "sshuttle is an ssh vehicle for your environment"
 authors = ["Justin Kinney <justin.kinney@oracle.com>"]
 

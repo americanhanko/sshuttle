@@ -59,7 +59,7 @@ def default_rcfile():
     """
 
     default = r"""
-PS1="\[\e[00;31m\]\u\[\e[0m\]\[\e[00;37m\]@\[\e[0m\]\[\e[00;36m\]\h\[\e[0m\]\[\e[00;37m\]:\w \[\e[0m\]"
+PS1="\[\033[0;37m\][\[\033[0;32m\]\u\[\033[0;37m\]@\[\033[0;35m\]\h \[\033[0;33m\]\W\[\033[0;37m\]] \[\033[0;37m\]\[\033[0m\]\n$ "
 cleaner() { echo "cleaning up sshuttle remnants!"; rm -rf "${SSHHOME}"; }
 trap cleaner SIGINT SIGTERM EXIT
 """

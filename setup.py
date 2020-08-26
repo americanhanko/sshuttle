@@ -13,7 +13,7 @@ readme = ""
 setup(
     long_description=readme,
     name="sshuttle",
-    version="0.2.0",
+    version="0.2.1",
     description="sshuttle is an ssh vehicle for your environment",
     python_requires="==3.*,>=3.6.0",
     author="Justin Kinney",
