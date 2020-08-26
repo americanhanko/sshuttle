@@ -57,15 +57,15 @@ def default_rcfile():
     Returns:
       data (list): default rc file contents
     """
-    default = """PS1="\\[\\e[00;31m\\]\\u\\[\\e[0m\\]\\[\\e[00;37m\\]@\\[\\e[0m\\]\\[\\e[00;36m\\]\\h\\[\\e[0m\\]\\[\\e[00;37m\\]:\\w \\[\\e[0m\\]"
-cleaner () {
-    echo "cleaning up sshuttle remnants!"
-    rm -rf $TMPDIR;
-}
+
+    default = r"""
+PS1="\[\e[00;31m\]\u\[\e[0m\]\[\e[00;37m\]@\[\e[0m\]\[\e[00;36m\]\h\[\e[0m\]\[\e[00;37m\]:\w \[\e[0m\]"
+cleaner() { echo "cleaning up sshuttle remnants!"; rm -rf "${TMPDIR}"; }
 trap cleaner SIGINT SIGTERM EXIT
 """
+
     lines = [line.rstrip() for line in default.split('\n')]
-    lines.insert(0, "TMPDIR=/tmp/sshuttle.{}".format(SSHUTTLEID))
+    lines.insert(0, f"TMPDIR=/tmp/sshuttle.{SSHUTTLEID}")
     return lines
 
 
